@@ -28,9 +28,9 @@ export type Venta = {
 };
 
 export type Cliente = {
-  id: string;
-  nombre: string;
-  telefono?: string;
+  customer_id?: string;
+  name: string;
+  phone?: string;
   documento?: string;
   email?: string;
   direccion?: string;
@@ -43,4 +43,5 @@ export type Modelo = {
   costoBase: number;
   precioSugerido: number;
   categoriaId: string;
+  imagen?: string;
 };

@@ -1,5 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, ShoppingCart, Users, Moon, Sun } from "lucide-react";
+import { 
+  Home, 
+  ShoppingCart, 
+  Users, 
+  Package, 
+  Moon, 
+  Sun, 
+  Gem 
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 
@@ -24,20 +32,24 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { path: "/", icon: Home, label: "Dashboard" },
+    { path: "/productos", icon: Package, label: "Productos" },
     { path: "/ventas", icon: ShoppingCart, label: "Ventas" },
     { path: "/clientes", icon: Users, label: "Clientes" },
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen flex flex-col bg-background overflow-x-hidden">
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold">
-              R
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 
+                flex items-center justify-center shadow-lg shadow-yellow-500/30
+                transition-all duration-300 hover:scale-105 hover:shadow-yellow-500/50">
+              <Gem className="w-5 h-5 text-white drop-shadow-[0_0_4px_rgba(255,255,255,0.8)]" />
             </div>
-            <h1 className="text-xl font-bold text-foreground">
-              Relojes Premium
+
+            <h1 className="text-xl font-bold text-foreground whitespace-nowrap">
+              V&H Store
             </h1>
           </div>
 
@@ -74,7 +86,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="flex-1 container mx-auto px-4 py-8 overflow-y-auto">
         {children}
       </main>
 

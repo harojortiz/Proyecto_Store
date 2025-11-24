@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useVentasStore } from "@/store/useVentasStore";
@@ -22,7 +22,7 @@ interface ClienteDialogProps {
 
 export default function ClienteDialog({ open, onOpenChange, clienteId }: ClienteDialogProps) {
   const { clientes, agregarCliente, actualizarCliente } = useVentasStore();
-  const cliente = clienteId ? clientes.find((c) => c.id === clienteId) : null;
+  const cliente = clienteId ? clientes.find((c) => c.customer_id === clienteId) : null;
 
   const {
     register,
@@ -36,8 +36,8 @@ export default function ClienteDialog({ open, onOpenChange, clienteId }: Cliente
   useEffect(() => {
     if (cliente && open) {
       reset({
-        nombre: cliente.nombre,
-        telefono: cliente.telefono || "",
+        nombre: cliente.name,
+        telefono: cliente.phone || "",
         documento: cliente.documento || "",
         email: cliente.email || "",
         direccion: cliente.direccion || "",
@@ -55,15 +55,15 @@ export default function ClienteDialog({ open, onOpenChange, clienteId }: Cliente
 
   const onSubmit = (data: ClienteFormData) => {
     const clienteData = {
-      nombre: data.nombre,
-      telefono: data.telefono || undefined,
+      name: data.nombre,
+      phone: data.telefono || undefined,
       documento: data.documento || undefined,
       email: data.email || undefined,
       direccion: data.direccion || undefined,
     };
     
     if (cliente) {
-      actualizarCliente(cliente.id, clienteData);
+      actualizarCliente(cliente.customer_id, clienteData);
       toast.success("Cliente actualizado correctamente");
     } else {
       agregarCliente(clienteData);

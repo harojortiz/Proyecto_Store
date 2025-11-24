@@ -56,7 +56,7 @@ export default function Dashboard() {
     .sort(([, a], [, b]) => b - a)
     .slice(0, 5)
     .map(([clienteId, total]) => ({
-      cliente: clientes.find((c) => c.id === clienteId),
+      cliente: clientes.find((c) => c.customer_id === clienteId),
       total,
     }));
 
@@ -157,13 +157,13 @@ export default function Dashboard() {
           </h3>
           <div className="space-y-3">
             {topClientes.map(({ cliente, total }, index) => (
-              <div key={cliente?.id} className="flex items-center justify-between">
+              <div key={cliente?.customer_id} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary">
                     {index + 1}
                   </div>
                   <span className="text-sm font-medium text-foreground">
-                    {cliente?.nombre || 'Cliente desconocido'}
+                    {cliente?.name || 'Cliente desconocido'}
                   </span>
                 </div>
                 <span className="text-sm font-semibold text-foreground">

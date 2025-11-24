@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useVentasStore } from "@/store/useVentasStore";
 import { formatCOP } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
@@ -19,20 +19,28 @@ import {
 import { toast } from "sonner";
 
 export default function Clientes() {
-  const { clientes, ventas, eliminarCliente } = useVentasStore();
+  const { ventas, eliminarCliente, clientes, obtenerClientes } = useVentasStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [clienteDialogOpen, setClienteDialogOpen] = useState(false);
   const [clienteEditando, setClienteEditando] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [clienteAEliminar, setClienteAEliminar] = useState<string | null>(null);
 
-  const clientesFiltrados = clientes.filter((c) => {
+
+//TODO: applementar api de clientes  Server listening on http://localhost:3000 para obtener la data de clientes
+//   [Nest] 9796  - 28/10/2025, 3:51:49 p. m.     LOG [RouterExplorer] Mapped {/customers, POST} route +1ms
+// [Nest] 9796  - 28/10/2025, 3:51:49 p. m.     LOG [RouterExplorer] Mapped {/customers, POST} route +1ms
+// [Nest] 9796  - 28/10/2025, 3:51:49 p. m.     LOG [RouterExplorer] Mapped {/customers, GET} route +2ms
+// [Nest] 9796  - 28/10/2025, 3:51:49 p. m.     LOG [RouterExplorer] Mapped {/customers/:id, GET} route +1ms
+// [Nest] 9796  - 28/10/2025, 3:51:49 p. m.     LOG [RouterExplorer] Mapped {/customers/:id, PUT} route +0ms
+// [Nest] 9796  - 28/10/2025, 3:51:49 p. m.     LOG [RouterExplorer] Mapped {/customers/:id, DELETE} route +1ms
+const clientesFiltrados = clientes.filter((c) => {
     const searchLower = searchTerm.toLowerCase();
     return (
-      c.nombre.toLowerCase().includes(searchLower) ||
-      c.telefono?.toLowerCase().includes(searchLower) ||
-      c.documento?.toLowerCase().includes(searchLower) ||
-      c.email?.toLowerCase().includes(searchLower) ||
+      c?.name?.toLowerCase().includes(searchLower) ||
+      c?.phone?.toLowerCase().includes(searchLower) ||
+      c?.documento?.toLowerCase().includes(searchLower) ||
+      c?.email?.toLowerCase().includes(searchLower) ||
       ''
     );
   });
@@ -77,6 +85,10 @@ export default function Clientes() {
     }
   };
 
+  useEffect(() => {
+    obtenerClientes();
+  }, []);
+
   return (
     <div className="space-y-6 pb-20 md:pb-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -106,18 +118,18 @@ export default function Clientes() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {clientesFiltrados.map((cliente) => {
-          const stats = getClienteStats(cliente.id);
+          const stats = getClienteStats(cliente?.customer_id);
           return (
-            <Card key={cliente.id} className="p-6 hover:shadow-lg transition-shadow">
+            <Card key={cliente?.customer_id} className="p-6 hover:shadow-lg transition-shadow">
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground mb-1">
-                    {cliente.nombre}
+                    {cliente?.name}
                   </h3>
-                  {cliente.documento && (
+                  {cliente?.documento && (
                     <p className="text-sm text-muted-foreground flex items-center gap-1">
                       <FileText className="w-3 h-3" />
-                      {cliente.documento}
+                      {cliente?.documento}
                     </p>
                   )}
                 </div>
@@ -125,14 +137,14 @@ export default function Clientes() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleEditarCliente(cliente.id)}
+                    onClick={() => handleEditarCliente(cliente?.customer_id)}
                   >
                     <Pencil className="w-4 h-4" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleEliminarClick(cliente.id)}
+                    onClick={() => handleEliminarClick(cliente?.customer_id)}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -140,16 +152,16 @@ export default function Clientes() {
               </div>
 
               <div className="space-y-2 mb-4">
-                {cliente.telefono && (
+                {cliente?.phone && (
                   <p className="text-sm text-muted-foreground flex items-center gap-2">
                     <Phone className="w-4 h-4" />
-                    {cliente.telefono}
+                    {cliente?.phone}
                   </p>
                 )}
-                {cliente.email && (
+                {cliente?.email && (
                   <p className="text-sm text-muted-foreground flex items-center gap-2">
                     <Mail className="w-4 h-4" />
-                    {cliente.email}
+                    {cliente?.email}
                   </p>
                 )}
               </div>

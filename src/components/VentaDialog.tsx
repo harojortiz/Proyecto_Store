@@ -270,8 +270,8 @@ export default function VentaDialog({ open, onOpenChange, ventaId }: VentaDialog
                 </SelectTrigger>
                 <SelectContent>
                   {clientes.map((cliente) => (
-                    <SelectItem key={cliente.id} value={cliente.id}>
-                      {cliente.nombre}
+                    <SelectItem key={cliente.customer_id} value={cliente.customer_id}>
+                      {cliente.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
