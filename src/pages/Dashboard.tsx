@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export default function Dashboard() {
-  const { ventas, clientes, categorias } = useVentasStore();
+  const { ventas, clientes, categorias, modelos } = useVentasStore();
   const navigate = useNavigate();
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string | null>(null);
 
@@ -38,7 +38,9 @@ export default function Dashboard() {
 
   // Top 5 modelos más vendidos
   const modelosCount = ventasFiltradas.reduce((acc, v) => {
-    acc[v.modelo] = (acc[v.modelo] || 0) + 1;
+    const modelo = modelos.find(m => m.id === v.modeloId);
+    const nombre = modelo ? modelo.nombre : 'Producto desconocido';
+    acc[nombre] = (acc[nombre] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 

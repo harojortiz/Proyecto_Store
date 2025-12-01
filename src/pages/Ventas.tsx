@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { obtenerSales } from "@/services/salesService";
+import { Sale, SaleFromApi } from "@/types";
 
 export default function Ventas() {
   const { ventas, clientes, categorias, eliminarVenta, obtenerCliente } = useVentasStore();
@@ -32,7 +33,7 @@ export default function Ventas() {
   const [ventaEditando, setVentaEditando] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [ventaAEliminar, setVentaAEliminar] = useState<string | null>(null);
-  const [sales, setSales] = useState<any[]>([]);
+  const [sales, setSales] = useState<SaleFromApi[]>([]);
 
   // Activar filtros al llegar desde Dashboard
   useEffect(() => {
@@ -129,8 +130,13 @@ export default function Ventas() {
   };
 
   const getSales = async () => {
-    const response = await obtenerSales();
-    setSales(response);
+    try {
+      const response = await obtenerSales();
+      setSales(response);
+    } catch (error) {
+      console.error("Error fetching sales:", error);
+      toast.error("Error al cargar las ventas. Verifique que el backend esté funcionando.");
+    }
   }
 
   useEffect(() => {
@@ -234,7 +240,7 @@ export default function Ventas() {
             </thead>
             <tbody>
               {sales.map((venta, index) => {
-                
+
                 return (
                   <tr key={venta.id} className="border-t border-border hover:bg-muted/30">
                     <td className="px-4 py-3 text-sm text-foreground">{index + 1}</td>

@@ -27,14 +27,7 @@ export default function Clientes() {
   const [clienteAEliminar, setClienteAEliminar] = useState<string | null>(null);
 
 
-//TODO: applementar api de clientes  Server listening on http://localhost:3000 para obtener la data de clientes
-//   [Nest] 9796  - 28/10/2025, 3:51:49 p. m.     LOG [RouterExplorer] Mapped {/customers, POST} route +1ms
-// [Nest] 9796  - 28/10/2025, 3:51:49 p. m.     LOG [RouterExplorer] Mapped {/customers, POST} route +1ms
-// [Nest] 9796  - 28/10/2025, 3:51:49 p. m.     LOG [RouterExplorer] Mapped {/customers, GET} route +2ms
-// [Nest] 9796  - 28/10/2025, 3:51:49 p. m.     LOG [RouterExplorer] Mapped {/customers/:id, GET} route +1ms
-// [Nest] 9796  - 28/10/2025, 3:51:49 p. m.     LOG [RouterExplorer] Mapped {/customers/:id, PUT} route +0ms
-// [Nest] 9796  - 28/10/2025, 3:51:49 p. m.     LOG [RouterExplorer] Mapped {/customers/:id, DELETE} route +1ms
-const clientesFiltrados = clientes.filter((c) => {
+  const clientesFiltrados = clientes.filter((c) => {
     const searchLower = searchTerm.toLowerCase();
     return (
       c?.name?.toLowerCase().includes(searchLower) ||
