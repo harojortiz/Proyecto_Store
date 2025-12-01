@@ -1,4 +1,5 @@
 export type EstadoVenta = 'PAGADA' | 'PARCIAL' | 'DEUDA';
+export type Sale = Venta;
 
 export type Categoria = {
   id: string;
@@ -9,8 +10,9 @@ export type Categoria = {
 
 export type Venta = {
   id: string;
-  ref: string;
-  modelo: string;
+  modeloId: string; // Referencia directa al ID del producto
+  ref?: string; // Mantener para compatibilidad, pero opcional
+  modelo?: string; // Mantener para compatibilidad, pero opcional
   neto: number;
   iva19: number;
   total: number;
@@ -44,4 +46,15 @@ export type Modelo = {
   precioSugerido: number;
   categoriaId: string;
   imagen?: string;
+};
+
+export type SaleFromApi = {
+  id: string;
+  ref: string;
+  modelo: string;
+  price: number;
+  total: number;
+  quantity: number;
+  name: string;
+  created_at: string;
 };
