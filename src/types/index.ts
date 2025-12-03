@@ -48,13 +48,47 @@ export type Modelo = {
   imagen?: string;
 };
 
+
 export type SaleFromApi = {
   id: string;
-  ref: string;
-  modelo: string;
-  price: number;
+  modeloId: string;
+  ref: string | null;
+  modelo: string | null;
+  neto: number;
+  iva19: number;
   total: number;
-  quantity: number;
-  name: string;
-  created_at: string;
+  cuota1: number;
+  cuota2: number;
+  deuda: number;
+  venta: number;
+  ganancias: number;
+  clienteId: string;
+  fecha: string;
+  estado: string;
+  notas: string | null;
+  costoBase: number | null;
+  categoriaId: string;
+  createdAt: string;
+  updatedAt: string;
+  customer: {
+    customer_id: string;
+    name: string;
+    phone: string | null;
+    documento: string | null;
+    email: string | null;
+    direccion: string | null;
+  };
+  product: {
+    id: string;
+    ref: string;
+    nombre: string;
+    costoBase: number;
+    precioSugerido: number;
+  };
+  category: {
+    id: string;
+    nombre: string;
+    descripcion: string | null;
+    color: string;
+  };
 };

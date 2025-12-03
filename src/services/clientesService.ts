@@ -1,25 +1,23 @@
-import axios from "axios";
+import apiClient from "@/lib/api";
 import { Cliente } from "@/types";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 export const clientesService = {
   obtenerClientes: async (): Promise<Cliente[]> => {
-    const { data } = await axios.get(`${API_URL}/customers/findAll`);
+    const { data } = await apiClient.get(`/customers/findAll`);
     return data;
   },
 
   crearCliente: async (cliente: Omit<Cliente, 'id'>): Promise<Cliente> => {
-    const { data } = await axios.post(`${API_URL}/customers`, cliente);
+    const { data } = await apiClient.post(`/customers`, cliente);
     return data;
   },
 
   actualizarCliente: async (id: string, cliente: Partial<Cliente>): Promise<Cliente> => {
-    const { data } = await axios.put(`${API_URL}/customers/${id}`, cliente);
+    const { data } = await apiClient.put(`/customers/${id}`, cliente);
     return data;
   },
 
   eliminarCliente: async (id: string): Promise<void> => {
-    await axios.delete(`${API_URL}/customers/${id}`);
+    await apiClient.delete(`/customers/${id}`);
   },
 };

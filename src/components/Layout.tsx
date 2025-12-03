@@ -1,18 +1,23 @@
 import { Link, useLocation } from "react-router-dom";
-import { 
-  Home, 
-  ShoppingCart, 
-  Users, 
-  Package, 
-  Moon, 
-  Sun, 
-  Gem 
+import {
+  Home,
+  ShoppingCart,
+  Users,
+  Package,
+  Moon,
+  Sun,
+  Gem,
+  LogOut,
+  User,
+  UserCog
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const { user, logout } = useAuth();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   useEffect(() => {
@@ -71,18 +76,59 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-          >
-            {theme === 'light' ? (
-              <Moon className="w-5 h-5" />
-            ) : (
-              <Sun className="w-5 h-5" />
+          <div className="flex items-center gap-2">
+            {user && (
+              <div className="flex items-center gap-2">
+                <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-muted rounded-md">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{user.name}</span>
+                  {user.role === 'ADMIN' && (
+                    <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded">
+                      Admin
+                    </span>
+                  )}
+                </div>
+
+                {/* Menú de usuario para móviles y escritorio */}
+                <Link to="/profile">
+                  <Button variant="ghost" size="icon" title="Mi Perfil">
+                    <UserCog className="w-5 h-5" />
+                  </Button>
+                </Link>
+
+                {user.role === 'ADMIN' && (
+                  <Link to="/usuarios" className="hidden md:block">
+                    <Button variant="ghost" size="icon" title="Gestión de Usuarios">
+                      <Users className="w-5 h-5" />
+                    </Button>
+                  </Link>
+                )}
+              </div>
             )}
-          </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+            >
+              {theme === 'light' ? (
+                <Moon className="w-5 h-5" />
+              ) : (
+                <Sun className="w-5 h-5" />
+              )}
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={logout}
+              aria-label="Cerrar sesión"
+              title="Cerrar sesión"
+            >
+              <LogOut className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
       </header>
 

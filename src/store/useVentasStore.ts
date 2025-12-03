@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Venta, Cliente, Categoria, Modelo } from '@/types';
 import { clientesService } from '@/services/clientesService';
+import { productsService } from '@/services/productsService';
+import { crearSale, actualizarSale, eliminarSale, obtenerSales } from '@/services/salesService';
 
 // Categorías disponibles
 const categoriasIniciales: Categoria[] = [
@@ -19,17 +21,19 @@ interface VentasState {
   clientes: Cliente[];
   categorias: Categoria[];
   modelos: Modelo[];
-  agregarVenta: (venta: Omit<Venta, 'id'>) => void;
-  actualizarVenta: (id: string, venta: Partial<Venta>) => void;
-  eliminarVenta: (id: string) => void;
+  agregarVenta: (venta: Omit<Venta, 'id'>) => Promise<void>;
+  actualizarVenta: (id: string, venta: Partial<Venta>) => Promise<void>;
+  eliminarVenta: (id: string) => Promise<void>;
+  obtenerVentas: () => Promise<void>;
   agregarCliente: (cliente: Omit<Cliente, 'id'>) => Promise<void>;
   actualizarCliente: (id: string, cliente: Partial<Cliente>) => void;
   eliminarCliente: (id: string) => void;
   obtenerCliente: (id: string) => Cliente | undefined;
-  agregarModelo: (modelo: Omit<Modelo, 'id'>) => void;
-  actualizarModelo: (id: string, modelo: Partial<Modelo>) => void;
-  eliminarModelo: (id: string) => void;
+  agregarModelo: (modelo: Omit<Modelo, 'id'>) => Promise<void>;
+  actualizarModelo: (id: string, modelo: Partial<Modelo>) => Promise<void>;
+  eliminarModelo: (id: string) => Promise<void>;
   obtenerClientes: () => Promise<void>;
+  obtenerModelos: () => Promise<void>;
   obtenerModelo: (id: string) => Modelo | undefined;
 }
 
@@ -41,25 +45,72 @@ export const useVentasStore = create<VentasState>()(
       categorias: categoriasIniciales,
       modelos: modelosIniciales,
 
-      agregarVenta: (venta) =>
-        set((state) => ({
-          ventas: [
-            ...state.ventas,
-            { ...venta, id: `${Date.now()}` },
-          ],
-        })),
+      agregarVenta: async (venta) => {
+        try {
+          const nuevaVenta = await crearSale({
+            modeloId: venta.modeloId,
+            ref: venta.ref,
+            modelo: venta.modelo,
+            neto: venta.neto,
+            iva19: venta.iva19,
+            total: venta.total,
+            cuota1: venta.cuota1,
+            cuota2: venta.cuota2,
+            deuda: venta.deuda,
+            venta: venta.venta,
+            ganancias: venta.ganancias,
+            clienteId: venta.clienteId,
+            fecha: venta.fecha,
+            estado: venta.estado,
+            notas: venta.notas,
+            costoBase: venta.costoBase,
+            categoriaId: venta.categoriaId,
+          });
+          console.log('Venta creada:', nuevaVenta);
+          set((state) => ({
+            ventas: [...state.ventas, nuevaVenta],
+          }));
+        } catch (error) {
+          console.error('Error al crear venta:', error);
+          throw error;
+        }
+      },
 
-      actualizarVenta: (id, ventaActualizada) =>
-        set((state) => ({
-          ventas: state.ventas.map((v) =>
-            v.id === id ? { ...v, ...ventaActualizada } : v
-          ),
-        })),
+      actualizarVenta: async (id, ventaActualizada) => {
+        try {
+          const ventaActualizadaResponse = await actualizarSale(id, ventaActualizada);
+          set((state) => ({
+            ventas: state.ventas.map((v) =>
+              v.id === id ? ventaActualizadaResponse : v
+            ),
+          }));
+        } catch (error) {
+          console.error('Error al actualizar venta:', error);
+          throw error;
+        }
+      },
 
-      eliminarVenta: (id) =>
-        set((state) => ({
-          ventas: state.ventas.filter((v) => v.id !== id),
-        })),
+      eliminarVenta: async (id) => {
+        try {
+          await eliminarSale(id);
+          set((state) => ({
+            ventas: state.ventas.filter((v) => v.id !== id),
+          }));
+        } catch (error) {
+          console.error('Error al eliminar venta:', error);
+          throw error;
+        }
+      },
+
+      obtenerVentas: async () => {
+        try {
+          const ventas = await obtenerSales();
+          console.log('Ventas obtenidas:', ventas);
+          set({ ventas });
+        } catch (error) {
+          console.error('Error al obtener ventas:', error);
+        }
+      },
 
       agregarCliente: async (cliente) => {
         try {
@@ -91,27 +142,71 @@ export const useVentasStore = create<VentasState>()(
 
       obtenerCliente: (id) => get().clientes.find((c) => c.customer_id === id),
 
-      agregarModelo: (modelo) =>
-        set((state) => ({
-          modelos: [
-            ...state.modelos,
-            { ...modelo, id: `${Date.now()}` },
-          ],
-        })),
+      agregarModelo: async (modelo) => {
+        try {
+          const nuevoProducto = await productsService.create({
+            ref: modelo.ref,
+            nombre: modelo.nombre,
+            costoBase: modelo.costoBase,
+            precioSugerido: modelo.precioSugerido,
+            imagen: modelo.imagen,
+            categoriaId: modelo.categoriaId,
+          });
+          console.log('Producto creado:', nuevoProducto);
+          set((state) => ({
+            modelos: [...state.modelos, nuevoProducto],
+          }));
+        } catch (error) {
+          console.error('Error al crear producto:', error);
+          throw error;
+        }
+      },
 
-      actualizarModelo: (id, modeloActualizado) =>
-        set((state) => ({
-          modelos: state.modelos.map((m) =>
-            m.id === id ? { ...m, ...modeloActualizado } : m
-          ),
-        })),
+      actualizarModelo: async (id, modeloActualizado) => {
+        try {
+          const productoActualizado = await productsService.update(id, {
+            ref: modeloActualizado.ref,
+            nombre: modeloActualizado.nombre,
+            costoBase: modeloActualizado.costoBase,
+            precioSugerido: modeloActualizado.precioSugerido,
+            imagen: modeloActualizado.imagen,
+            categoriaId: modeloActualizado.categoriaId,
+          });
+          set((state) => ({
+            modelos: state.modelos.map((m) =>
+              m.id === id ? productoActualizado : m
+            ),
+          }));
+        } catch (error) {
+          console.error('Error al actualizar producto:', error);
+          throw error;
+        }
+      },
 
-      eliminarModelo: (id) =>
-        set((state) => ({
-          modelos: state.modelos.filter((m) => m.id !== id),
-        })),
+      eliminarModelo: async (id) => {
+        try {
+          await productsService.delete(id);
+          set((state) => ({
+            modelos: state.modelos.filter((m) => m.id !== id),
+          }));
+        } catch (error) {
+          console.error('Error al eliminar producto:', error);
+          throw error;
+        }
+      },
 
       obtenerModelo: (id) => get().modelos.find((m) => m.id === id),
+
+      obtenerModelos: async () => {
+        try {
+          const productos = await productsService.getAll();
+          console.log('Productos obtenidos:', productos);
+          set({ modelos: productos });
+        } catch (error) {
+          console.error('Error al obtener productos:', error);
+        }
+      },
+
       obtenerClientes: async () => {
         try {
           const resp = await clientesService.obtenerClientes()

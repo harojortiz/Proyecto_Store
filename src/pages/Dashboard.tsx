@@ -136,7 +136,7 @@ export default function Dashboard() {
           </h3>
           <div className="space-y-3">
             {topModelos.map(([modelo, cantidad], index) => (
-              <div key={modelo} className="flex items-center justify-between">
+              <div key={`modelo-${index}-${modelo}`} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-sm font-bold text-accent-foreground">
                     {index + 1}
@@ -159,7 +159,7 @@ export default function Dashboard() {
           </h3>
           <div className="space-y-3">
             {topClientes.map(({ cliente, total }, index) => (
-              <div key={cliente?.customer_id} className="flex items-center justify-between">
+              <div key={cliente?.customer_id || `cliente-${index}`} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary">
                     {index + 1}

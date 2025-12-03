@@ -23,7 +23,7 @@ import { obtenerSales } from "@/services/salesService";
 import { Sale, SaleFromApi } from "@/types";
 
 export default function Ventas() {
-  const { ventas, clientes, categorias, eliminarVenta, obtenerCliente } = useVentasStore();
+  const { ventas, clientes, categorias, eliminarVenta, obtenerCliente, obtenerVentas } = useVentasStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroDeuda, setFiltroDeuda] = useState(false);
@@ -33,7 +33,11 @@ export default function Ventas() {
   const [ventaEditando, setVentaEditando] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [ventaAEliminar, setVentaAEliminar] = useState<string | null>(null);
-  const [sales, setSales] = useState<SaleFromApi[]>([]);
+
+  // Cargar ventas desde el backend al montar el componente
+  useEffect(() => {
+    obtenerVentas();
+  }, []);
 
   // Activar filtros al llegar desde Dashboard
   useEffect(() => {
@@ -59,10 +63,9 @@ export default function Ventas() {
     const searchLower = searchTerm.toLowerCase();
 
     const cumpleBusqueda = (
-      v.ref.toLowerCase().includes(searchLower) ||
-      v.modelo.toLowerCase().includes(searchLower) ||
-      cliente?.name.toLowerCase().includes(searchLower) ||
-      ''
+      (v.ref?.toLowerCase() || '').includes(searchLower) ||
+      (v.modelo?.toLowerCase() || '').includes(searchLower) ||
+      (cliente?.name?.toLowerCase() || '').includes(searchLower)
     );
 
     const cumpleDeuda = !filtroDeuda || v.deuda > 0;
@@ -128,20 +131,6 @@ export default function Ventas() {
       </Badge>
     );
   };
-
-  const getSales = async () => {
-    try {
-      const response = await obtenerSales();
-      setSales(response);
-    } catch (error) {
-      console.error("Error fetching sales:", error);
-      toast.error("Error al cargar las ventas. Verifique que el backend esté funcionando.");
-    }
-  }
-
-  useEffect(() => {
-    getSales()
-  }, []);
 
   return (
     <div className="space-y-6 pb-20 md:pb-8">
@@ -231,7 +220,7 @@ export default function Ventas() {
                 <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">Total</th>
                 <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">Cuota 1</th>
                 <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">Cuota 2</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">Cantidad</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">Deuda</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Cliente</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Fecha</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Estado</th>
@@ -239,22 +228,22 @@ export default function Ventas() {
               </tr>
             </thead>
             <tbody>
-              {sales.map((venta, index) => {
+              {ventasFiltradas.map((venta, index) => {
 
                 return (
                   <tr key={venta.id} className="border-t border-border hover:bg-muted/30">
                     <td className="px-4 py-3 text-sm text-foreground">{index + 1}</td>
-                    <td className="px-4 py-3 text-sm font-medium text-foreground">{venta.ref}</td>
-                    <td className="px-4 py-3 text-sm text-foreground">{venta.modelo}</td>
-                    <td className="px-4 py-3 text-sm text-right text-foreground">{formatCOP(venta.price)}</td>
-                    <td className="px-4 py-3 text-sm text-right text-muted-foreground">{formatCOP(0)}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-foreground">{venta.ref || venta.product.ref}</td>
+                    <td className="px-4 py-3 text-sm text-foreground">{venta.modelo || venta.product.nombre}</td>
+                    <td className="px-4 py-3 text-sm text-right text-foreground">{formatCOP(venta.neto)}</td>
+                    <td className="px-4 py-3 text-sm text-right text-muted-foreground">{formatCOP(venta.iva19)}</td>
                     <td className="px-4 py-3 text-sm text-right font-semibold text-foreground">{formatCOP(venta.total)}</td>
-                    <td className="px-4 py-3 text-sm text-right text-foreground">{formatCOP(100)}</td>
-                    <td className="px-4 py-3 text-sm text-right text-foreground">{formatCOP(100)}</td>
-                    <td className="px-4 py-3 text-sm text-right font-semibold text-warning">{venta.quantity}</td>
-                    <td className="px-4 py-3 text-sm text-foreground">{venta?.name || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(venta.created_at)}</td>
-                    <td className="px-4 py-3">{"A"}</td>
+                    <td className="px-4 py-3 text-sm text-right text-foreground">{formatCOP(venta.cuota1)}</td>
+                    <td className="px-4 py-3 text-sm text-right text-foreground">{formatCOP(venta.cuota2)}</td>
+                    <td className="px-4 py-3 text-sm text-right font-semibold text-warning">{formatCOP(venta.deuda)}</td>
+                    <td className="px-4 py-3 text-sm text-foreground">{venta.customer?.name || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(venta.fecha)}</td>
+                    <td className="px-4 py-3">{getEstadoBadge(venta.estado)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
                         <Button
