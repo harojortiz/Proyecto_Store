@@ -1,4 +1,5 @@
 import apiClient from "@/lib/api";
+import { PaginationParams, PaginatedResponse } from "./salesService";
 
 export interface Product {
     id: string;
@@ -22,8 +23,8 @@ export interface CreateProductData {
 }
 
 export const productsService = {
-    getAll: async (): Promise<Product[]> => {
-        const { data } = await apiClient.get(`/products`);
+    getAll: async (params?: PaginationParams): Promise<PaginatedResponse<Product> | Product[]> => {
+        const { data } = await apiClient.get(`/products`, { params });
         return data;
     },
 

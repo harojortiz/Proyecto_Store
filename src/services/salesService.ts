@@ -21,8 +21,29 @@ export interface CreateSaleData {
     categoriaId: string;
 }
 
-export const obtenerSales = async (): Promise<SaleFromApi[]> => {
-    const { data } = await apiClient.get(`/sales`);
+export interface PaginationParams {
+    cursor?: string;
+    limit?: number;
+}
+
+export interface PaginatedResponse<T> {
+    data: T[];
+    pagination: {
+        nextCursor: string | null;
+        hasMore: boolean;
+        total?: number;
+    };
+}
+
+export const obtenerSales = async (params?: PaginationParams): Promise<PaginatedResponse<SaleFromApi>> => {
+    const { data } = await apiClient.get(`/sales`, { params });
+    // Handle both paginated and non-paginated responses for backward compatibility
+    if (Array.isArray(data)) {
+        return {
+            data,
+            pagination: { nextCursor: null, hasMore: false }
+        };
+    }
     return data;
 }
 

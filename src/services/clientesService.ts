@@ -1,9 +1,9 @@
 import apiClient from "@/lib/api";
-import { Cliente } from "@/types";
+import { Cliente, PaginationParams, PaginatedResponse } from "@/types";
 
 export const clientesService = {
-  obtenerClientes: async (): Promise<Cliente[]> => {
-    const { data } = await apiClient.get(`/customers/findAll`);
+  obtenerClientes: async (params?: PaginationParams): Promise<PaginatedResponse<Cliente> | Cliente[]> => {
+    const { data } = await apiClient.get(`/customers/findAll`, { params });
     return data;
   },
 

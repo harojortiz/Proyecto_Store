@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useVentasStore } from "@/store/useVentasStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Pencil, Trash2, Search, Package, Image as ImageIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Package, Image as ImageIcon, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { formatCOP } from "@/lib/formatters";
@@ -35,13 +35,41 @@ import ModeloDialog from "@/components/ModeloDialog";
 import { Modelo } from "@/types";
 
 export default function Productos() {
-  const { modelos, categorias, eliminarModelo } = useVentasStore();
+  const {
+    modelos,
+    categorias,
+    eliminarModelo,
+    obtenerModelos,
+    cargarMasModelos,
+    productsHasMore,
+    productsIsLoading
+  } = useVentasStore();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [categoriaFilter, setCategoriaFilter] = useState<string>("todas");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingModelo, setEditingModelo] = useState<Modelo | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [modeloToDelete, setModeloToDelete] = useState<string | null>(null);
+
+  // Observer for infinite scroll
+  const observer = useRef<IntersectionObserver | null>(null);
+  const lastElementRef = useCallback((node: HTMLTableRowElement | null) => {
+    if (productsIsLoading) return;
+    if (observer.current) observer.current.disconnect();
+
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && productsHasMore) {
+        cargarMasModelos();
+      }
+    });
+
+    if (node) observer.current.observe(node);
+  }, [productsIsLoading, productsHasMore, cargarMasModelos]);
+
+  useEffect(() => {
+    obtenerModelos(true);
+  }, []);
 
   const filteredModelos = modelos.filter((modelo) => {
     const matchesSearch =
@@ -163,17 +191,22 @@ export default function Productos() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredModelos.length === 0 ? (
+                {filteredModelos.length === 0 && !productsIsLoading ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       No se encontraron productos
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredModelos.map((modelo) => {
+                  filteredModelos.map((modelo, index) => {
                     const { margen, porcentaje } = calcularMargen(modelo);
+                    const isLastElement = index === filteredModelos.length - 1;
+
                     return (
-                      <TableRow key={modelo.id}>
+                      <TableRow
+                        key={modelo.id}
+                        ref={isLastElement ? lastElementRef : null}
+                      >
                         <TableCell>
                           <div className="w-16 h-16 rounded-md border border-border overflow-hidden bg-muted flex items-center justify-center">
                             {modelo.imagen ? (
@@ -243,6 +276,18 @@ export default function Productos() {
                 )}
               </TableBody>
             </Table>
+
+            {productsIsLoading && (
+              <div className="flex justify-center p-4">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            )}
+
+            {!productsHasMore && filteredModelos.length > 0 && (
+              <div className="text-center p-4 text-sm text-muted-foreground">
+                No hay más productos para mostrar
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useVentasStore } from "@/store/useVentasStore";
 import { formatCOP, formatDate } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Pencil, Trash2, X, Filter } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, X, Filter, DollarSign, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import VentaDialog from "@/components/VentaDialog";
+import PaymentsDialog from "@/components/PaymentsDialog";
 import { useSearchParams } from "react-router-dom";
 import {
   AlertDialog,
@@ -19,11 +20,20 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { obtenerSales } from "@/services/salesService";
-import { Sale, SaleFromApi } from "@/types";
+import { Sale } from "@/types";
 
 export default function Ventas() {
-  const { ventas, clientes, categorias, eliminarVenta, obtenerCliente, obtenerVentas } = useVentasStore();
+  const {
+    ventas,
+    eliminarVenta,
+    obtenerCliente,
+    obtenerVentas,
+    cargarMasVentas,
+    hasMore,
+    isLoading,
+    categorias
+  } = useVentasStore();
+
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroDeuda, setFiltroDeuda] = useState(false);
@@ -33,10 +43,27 @@ export default function Ventas() {
   const [ventaEditando, setVentaEditando] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [ventaAEliminar, setVentaAEliminar] = useState<string | null>(null);
+  const [paymentsDialogOpen, setPaymentsDialogOpen] = useState(false);
+  const [selectedSale, setSelectedSale] = useState<any | null>(null);
 
-  // Cargar ventas desde el backend al montar el componente
+  // Observer for infinite scroll
+  const observer = useRef<IntersectionObserver | null>(null);
+  const lastElementRef = useCallback((node: HTMLTableRowElement | null) => {
+    if (isLoading) return;
+    if (observer.current) observer.current.disconnect();
+
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        cargarMasVentas();
+      }
+    });
+
+    if (node) observer.current.observe(node);
+  }, [isLoading, hasMore, cargarMasVentas]);
+
+  // Cargar ventas iniciales
   useEffect(() => {
-    obtenerVentas();
+    obtenerVentas(true); // Reset list on mount
   }, []);
 
   // Activar filtros al llegar desde Dashboard
@@ -104,20 +131,6 @@ export default function Ventas() {
       setDeleteDialogOpen(false);
     }
   };
-
-  const totales = ventasFiltradas.reduce(
-    (acc, v) => ({
-      neto: acc.neto + v.neto,
-      iva: acc.iva + v.iva19,
-      total: acc.total + v.total,
-      cuota1: acc.cuota1 + v.cuota1,
-      cuota2: acc.cuota2 + v.cuota2,
-      deuda: acc.deuda + v.deuda,
-      venta: acc.venta + v.venta,
-      ganancias: acc.ganancias + v.ganancias,
-    }),
-    { neto: 0, iva: 0, total: 0, cuota1: 0, cuota2: 0, deuda: 0, venta: 0, ganancias: 0 }
-  );
 
   const getEstadoBadge = (estado: string) => {
     const variants = {
@@ -229,12 +242,17 @@ export default function Ventas() {
             </thead>
             <tbody>
               {ventasFiltradas.map((venta, index) => {
+                const isLastElement = index === ventasFiltradas.length - 1;
 
                 return (
-                  <tr key={venta.id} className="border-t border-border hover:bg-muted/30">
+                  <tr
+                    key={venta.id}
+                    ref={isLastElement ? lastElementRef : null}
+                    className="border-t border-border hover:bg-muted/30"
+                  >
                     <td className="px-4 py-3 text-sm text-foreground">{index + 1}</td>
-                    <td className="px-4 py-3 text-sm font-medium text-foreground">{venta.ref || venta.product.ref}</td>
-                    <td className="px-4 py-3 text-sm text-foreground">{venta.modelo || venta.product.nombre}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-foreground">{venta.ref || venta.product?.ref}</td>
+                    <td className="px-4 py-3 text-sm text-foreground">{venta.modelo || venta.product?.nombre}</td>
                     <td className="px-4 py-3 text-sm text-right text-foreground">{formatCOP(venta.neto)}</td>
                     <td className="px-4 py-3 text-sm text-right text-muted-foreground">{formatCOP(venta.iva19)}</td>
                     <td className="px-4 py-3 text-sm text-right font-semibold text-foreground">{formatCOP(venta.total)}</td>
@@ -246,6 +264,17 @@ export default function Ventas() {
                     <td className="px-4 py-3">{getEstadoBadge(venta.estado)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedSale(venta);
+                            setPaymentsDialogOpen(true);
+                          }}
+                          title="Ver Pagos"
+                        >
+                          <DollarSign className="w-4 h-4 text-green-600" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -266,19 +295,19 @@ export default function Ventas() {
                 );
               })}
             </tbody>
-            <tfoot className="bg-accent/10 border-t-2 border-accent">
-              {/* <tr>
-                <td colSpan={3} className="px-4 py-3 text-sm font-bold text-foreground">TOTALES</td>
-                <td className="px-4 py-3 text-sm text-right font-bold text-foreground">{formatCOP(totales.neto)}</td>
-                <td className="px-4 py-3 text-sm text-right font-bold text-foreground">{formatCOP(totales.iva)}</td>
-                <td className="px-4 py-3 text-sm text-right font-bold text-foreground">{formatCOP(totales.total)}</td>
-                <td className="px-4 py-3 text-sm text-right font-bold text-foreground">{formatCOP(totales.cuota1)}</td>
-                <td className="px-4 py-3 text-sm text-right font-bold text-foreground">{formatCOP(totales.cuota2)}</td>
-                <td className="px-4 py-3 text-sm text-right font-bold text-foreground">{formatCOP(totales.deuda)}</td>
-                <td colSpan={4}></td>
-              </tr> */}
-            </tfoot>
           </table>
+
+          {isLoading && (
+            <div className="flex justify-center p-4">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          )}
+
+          {!hasMore && ventasFiltradas.length > 0 && (
+            <div className="text-center p-4 text-sm text-muted-foreground">
+              No hay más ventas para mostrar
+            </div>
+          )}
         </div>
       </Card>
 
@@ -304,6 +333,20 @@ export default function Ventas() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Payments Dialog */}
+      {selectedSale && (
+        <PaymentsDialog
+          open={paymentsDialogOpen}
+          onOpenChange={setPaymentsDialogOpen}
+          saleId={selectedSale.id}
+          saleTotal={selectedSale.total}
+          saleDeuda={selectedSale.deuda}
+          onPaymentCreated={() => {
+            obtenerVentas(true); // Recargar ventas para actualizar deuda
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -10,9 +10,9 @@ export type Categoria = {
 
 export type Venta = {
   id: string;
-  modeloId: string; // Referencia directa al ID del producto
-  ref?: string; // Mantener para compatibilidad, pero opcional
-  modelo?: string; // Mantener para compatibilidad, pero opcional
+  modeloId: string;
+  ref?: string;
+  modelo?: string;
   neto: number;
   iva19: number;
   total: number;
@@ -47,7 +47,6 @@ export type Modelo = {
   categoriaId: string;
   imagen?: string;
 };
-
 
 export type SaleFromApi = {
   id: string;
@@ -92,3 +91,28 @@ export type SaleFromApi = {
     color: string;
   };
 };
+
+export interface Payment {
+  id: string;
+  saleId: string;
+  monto: number;
+  fecha: string;
+  metodo: 'Efectivo' | 'Transferencia' | 'Tarjeta' | 'Otro';
+  notas?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Pagination types
+export interface PaginationParams {
+  cursor?: string;
+  limit?: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    nextCursor: string | null;
+    hasMore: boolean;
+  };
+}

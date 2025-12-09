@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useVentasStore } from "@/store/useVentasStore";
 import { formatCOP } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Plus, Search, Pencil, Trash2, Phone, Mail, FileText } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Phone, Mail, FileText, Loader2 } from "lucide-react";
 import ClienteDialog from "@/components/ClienteDialog";
 import {
   AlertDialog,
@@ -19,13 +19,40 @@ import {
 import { toast } from "sonner";
 
 export default function Clientes() {
-  const { ventas, eliminarCliente, clientes, obtenerClientes } = useVentasStore();
+  const {
+    ventas,
+    eliminarCliente,
+    clientes,
+    obtenerClientes,
+    cargarMasClientes,
+    customersHasMore,
+    customersIsLoading
+  } = useVentasStore();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [clienteDialogOpen, setClienteDialogOpen] = useState(false);
   const [clienteEditando, setClienteEditando] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [clienteAEliminar, setClienteAEliminar] = useState<string | null>(null);
 
+  // Observer for infinite scroll
+  const observer = useRef<IntersectionObserver | null>(null);
+  const lastElementRef = useCallback((node: HTMLDivElement | null) => {
+    if (customersIsLoading) return;
+    if (observer.current) observer.current.disconnect();
+
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && customersHasMore) {
+        cargarMasClientes();
+      }
+    });
+
+    if (node) observer.current.observe(node);
+  }, [customersIsLoading, customersHasMore, cargarMasClientes]);
+
+  useEffect(() => {
+    obtenerClientes(true);
+  }, []);
 
   const clientesFiltrados = clientes.filter((c) => {
     const searchLower = searchTerm.toLowerCase();
@@ -78,10 +105,6 @@ export default function Clientes() {
     }
   };
 
-  useEffect(() => {
-    obtenerClientes();
-  }, []);
-
   return (
     <div className="space-y-6 pb-20 md:pb-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -110,10 +133,16 @@ export default function Clientes() {
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {clientesFiltrados.map((cliente) => {
+        {clientesFiltrados.map((cliente, index) => {
           const stats = getClienteStats(cliente?.customer_id);
+          const isLastElement = index === clientesFiltrados.length - 1;
+
           return (
-            <Card key={cliente?.customer_id} className="p-6 hover:shadow-lg transition-shadow">
+            <Card
+              key={cliente?.customer_id}
+              className="p-6 hover:shadow-lg transition-shadow"
+              ref={isLastElement ? lastElementRef : null}
+            >
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground mb-1">
@@ -184,7 +213,19 @@ export default function Clientes() {
         })}
       </div>
 
-      {clientesFiltrados.length === 0 && (
+      {customersIsLoading && (
+        <div className="flex justify-center p-4">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      )}
+
+      {!customersHasMore && clientesFiltrados.length > 0 && (
+        <div className="text-center p-4 text-sm text-muted-foreground">
+          No hay más clientes para mostrar
+        </div>
+      )}
+
+      {clientesFiltrados.length === 0 && !customersIsLoading && (
         <Card className="p-12 text-center">
           <p className="text-muted-foreground">
             No se encontraron clientes que coincidan con tu búsqueda

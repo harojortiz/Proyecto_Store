@@ -49,3 +49,28 @@ export const calcularVentaCompleta = (
     estado,
   };
 };
+
+export const calcularVentaDesdeTotal = (
+  total: number,
+  cuota1: number = 0,
+  cuota2: number = 0,
+  ventaCustom?: number,
+  costoBase?: number
+) => {
+  const neto = Math.round(total / 1.19);
+  const iva19 = total - neto;
+  const deuda = calcularDeuda(total, cuota1, cuota2);
+  const venta = ventaCustom ?? total;
+  const ganancias = calcularGanancias(venta, costoBase, neto);
+  const estado = calcularEstado(deuda, cuota1, cuota2);
+
+  return {
+    neto,
+    iva19,
+    total,
+    deuda,
+    venta,
+    ganancias,
+    estado,
+  };
+};

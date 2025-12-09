@@ -3,17 +3,17 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useVentasStore } from "@/store/useVentasStore";
 import { ventaSchema, VentaFormData } from "@/lib/validations";
-import { calcularVentaCompleta } from "@/lib/calculators";
-import { Venta } from "@/types";
+import { calcularVentaCompleta, calcularVentaDesdeTotal } from "@/lib/calculators";
+
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -23,16 +23,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-
-interface VentaDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  ventaId?: string | null;
-}
+import { Venta } from "@/types";
 
 export default function VentaDialog({ open, onOpenChange, ventaId }: VentaDialogProps) {
   const { ventas, clientes, categorias, modelos, agregarVenta, actualizarVenta, obtenerModelo } = useVentasStore();
-  const [neto, setNeto] = useState(0);
+  const [totalInput, setTotalInput] = useState(0);
 
   const venta = ventaId ? ventas.find((v) => v.id === ventaId) : null;
 
@@ -62,7 +57,7 @@ export default function VentaDialog({ open, onOpenChange, ventaId }: VentaDialog
       setValue("fecha", venta.fecha);
       setValue("notas", venta.notas || "");
       setValue("categoriaId", venta.categoriaId);
-      setNeto(venta.neto);
+      setTotalInput(venta.total);
     } else if (!venta && open) {
       reset({
         modeloId: "",
@@ -72,17 +67,22 @@ export default function VentaDialog({ open, onOpenChange, ventaId }: VentaDialog
         notas: "",
         categoriaId: "relojes",
       });
-      setNeto(0);
+      setTotalInput(0);
     }
   }, [venta, open, setValue, reset]);
 
-  const calculos = calcularVentaCompleta(neto, 0, 0);
+  const calculos = calcularVentaDesdeTotal(totalInput, 0, 0);
+
+  // Actualizar neto en el formulario cuando cambia el total
+  useEffect(() => {
+    setValue("neto", calculos.neto);
+  }, [totalInput, setValue, calculos.neto]);
 
   const onSubmit = (data: VentaFormData) => {
     const ventaData: Venta = {
       id: venta?.id || `${Date.now()}`,
       modeloId: data.modeloId,
-      neto: data.neto,
+      neto: calculos.neto, // Usar neto calculado
       cuota1: 0,
       cuota2: 0,
       clienteId: data.clienteId,
@@ -126,7 +126,7 @@ export default function VentaDialog({ open, onOpenChange, ventaId }: VentaDialog
                 <SelectValue placeholder="Seleccionar producto" />
               </SelectTrigger>
               <SelectContent>
-                {modelos.map((modelo) => (
+                {Array.isArray(modelos) && modelos.map((modelo) => (
                   <SelectItem key={modelo.id} value={modelo.id}>
                     {modelo.nombre} - {modelo.ref}
                   </SelectItem>
@@ -140,25 +140,22 @@ export default function VentaDialog({ open, onOpenChange, ventaId }: VentaDialog
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="neto">NETO (COP)</Label>
+              <Label htmlFor="totalInput">TOTAL VENTA (COP)</Label>
               <Input
-                id="neto"
+                id="totalInput"
                 type="number"
-                {...register("neto", { valueAsNumber: true })}
+                value={totalInput || ''}
                 onChange={(e) => {
                   const value = parseFloat(e.target.value) || 0;
-                  setNeto(value);
-                  setValue("neto", value);
+                  setTotalInput(value);
                 }}
-                placeholder="25000000"
+                placeholder="Ej: 100000"
+                className="font-bold text-lg"
               />
-              {errors.neto && (
-                <p className="text-sm text-destructive mt-1">{errors.neto.message}</p>
-              )}
             </div>
 
             <div>
-              <Label>IVA 19% (Auto)</Label>
+              <Label>IVA 19% (Incluido)</Label>
               <Input
                 value={calculos.iva19.toLocaleString('es-CO')}
                 disabled
@@ -167,22 +164,24 @@ export default function VentaDialog({ open, onOpenChange, ventaId }: VentaDialog
             </div>
           </div>
 
-          <div>
-            <Label>Total (Auto)</Label>
-            <Input
-              value={calculos.total.toLocaleString('es-CO')}
-              disabled
-              className="bg-muted font-semibold"
-            />
-          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Neto (Calculado)</Label>
+              <Input
+                value={calculos.neto.toLocaleString('es-CO')}
+                disabled
+                className="bg-muted"
+              />
+            </div>
 
-          <div>
-            <Label>Deuda (Auto)</Label>
-            <Input
-              value={calculos.deuda.toLocaleString('es-CO')}
-              disabled
-              className="bg-muted text-warning font-semibold"
-            />
+            <div>
+              <Label>Deuda Inicial</Label>
+              <Input
+                value={calculos.deuda.toLocaleString('es-CO')}
+                disabled
+                className="bg-muted text-warning font-semibold"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -218,7 +217,7 @@ export default function VentaDialog({ open, onOpenChange, ventaId }: VentaDialog
                   <SelectValue placeholder="Seleccionar cliente" />
                 </SelectTrigger>
                 <SelectContent>
-                  {clientes.map((cliente) => (
+                  {Array.isArray(clientes) && clientes.map((cliente) => (
                     <SelectItem key={cliente.customer_id} value={cliente.customer_id}>
                       {cliente.name}
                     </SelectItem>
