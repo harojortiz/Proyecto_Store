@@ -2,101 +2,79 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* 
+  Sistema de Diseño Premium - V&H Store
+  Paleta inspirada en relojería y joyería de lujo
+  Colores: Negro Obsidiana, Oro Champagne, Platino, Marfil
 */
 
 @layer base {
   :root {
-    --background: 220 40% 98%;
-    --foreground: 220 40% 10%;
+    /* Fondo: Blanco Marfil para pureza */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
 
+    /* Cards: Estándar Luxe */
     --card: 0 0% 100%;
-    --card-foreground: 220 40% 10%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 40% 10%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 220 50% 25%;
+    /* Primary: Negro Obsidiana */
+    --primary: 0 0% 5%;
     --primary-foreground: 0 0% 98%;
 
-    --secondary: 220 20% 92%;
-    --secondary-foreground: 220 40% 20%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 220 20% 95%;
-    --muted-foreground: 220 15% 45%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 45 100% 60%;
-    --accent-foreground: 220 40% 10%;
+    /* Accent: Oro Champagne (ADN V&H Luxe) */
+    --accent: 38 45% 56%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
 
-    --success: 142 76% 36%;
-    --success-foreground: 0 0% 98%;
+    --success: 142 71% 45%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 38 45% 56%;
 
-    --border: 220 20% 88%;
-    --input: 220 20% 90%;
-    --ring: 220 50% 25%;
-
-    --radius: 1rem;
-
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 220 40% 20%;
-    --sidebar-primary: 220 50% 25%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 220 20% 95%;
-    --sidebar-accent-foreground: 220 40% 20%;
-    --sidebar-border: 220 20% 88%;
-    --sidebar-ring: 220 50% 25%;
+    --radius: 1.25rem;
   }
 
   .dark {
-    --background: 220 40% 8%;
-    --foreground: 220 20% 95%;
+    /* Negro Obsidiana Puro para Lujo */
+    --background: 0 0% 5%;
+    --foreground: 0 0% 98%;
 
-    --card: 220 40% 12%;
-    --card-foreground: 220 20% 95%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 220 40% 10%;
-    --popover-foreground: 220 20% 95%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 45 100% 60%;
-    --primary-foreground: 220 40% 10%;
+    --primary: 38 45% 56%;
+    /* En oscuro el primario puede ser el oro */
+    --primary-foreground: 0 0% 5%;
 
-    --secondary: 220 30% 18%;
-    --secondary-foreground: 220 20% 95%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 220 30% 16%;
-    --muted-foreground: 220 15% 60%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 65%;
 
-    --accent: 45 100% 55%;
-    --accent-foreground: 220 40% 10%;
+    /* Acento se mantiene idéntico para consistencia de marca */
+    --accent: 38 45% 56%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 65% 45%;
-    --destructive-foreground: 0 0% 98%;
-
-    --success: 142 70% 40%;
-    --success-foreground: 0 0% 98%;
-
-    --warning: 38 90% 55%;
-    --warning-foreground: 0 0% 98%;
-
-    --border: 220 30% 20%;
-    --input: 220 30% 18%;
-    --ring: 45 100% 60%;
-
-    --sidebar-background: 220 40% 10%;
-    --sidebar-foreground: 220 20% 90%;
-    --sidebar-primary: 45 100% 60%;
-    --sidebar-primary-foreground: 220 40% 10%;
-    --sidebar-accent: 220 30% 18%;
-    --sidebar-accent-foreground: 220 20% 90%;
-    --sidebar-border: 220 30% 20%;
-    --sidebar-ring: 45 100% 60%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 38 45% 56%;
   }
 }
 
@@ -106,6 +84,60 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Sistema Luxe - Consistencia Absoluta */
+@layer utilities {
+  .luxe-card {
+    @apply bg-card rounded-2xl border border-border/50 shadow-sm p-6 hover:shadow-md transition-all duration-300;
+  }
+
+  .luxe-card-dark {
+    @apply bg-card/50 backdrop-blur-sm border-white/5 shadow-xl;
+  }
+
+  .luxe-gradient {
+    @apply bg-gradient-to-br from-primary via-primary/95 to-primary/80;
+  }
+
+  .luxe-header {
+    @apply relative overflow-hidden rounded-3xl p-8 mb-8 text-white luxe-gradient;
+  }
+
+  .luxe-button-gold {
+    @apply bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg shadow-accent/20 transition-all duration-300 active:scale-95;
+  }
+
+  .luxe-text-gold {
+    @apply text-accent font-semibold;
+  }
+}
+
+/* Scrollbar personalizada */
+@layer utilities {
+  .scrollbar-luxury {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--accent)) transparent;
+  }
+
+  .scrollbar-luxury::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-luxury::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-luxury::-webkit-scrollbar-thumb {
+    background: hsl(var(--accent) / 0.3);
+    border-radius: 3px;
+  }
+
+  .scrollbar-luxury::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--accent) / 0.5);
   }
 }

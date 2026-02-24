@@ -14,7 +14,7 @@ export interface User {
 
 export interface LoginResponse {
     user: User;
-    token: string;
+    // Los tokens ahora están en cookies httpOnly, no en la respuesta JSON
 }
 
 export interface RegisterData {
@@ -25,16 +25,23 @@ export interface RegisterData {
 
 export const authService = {
     login: async (username: string, password: string): Promise<LoginResponse> => {
-        const { data } = await axios.post(`${API_URL}/auth/login`, { username, password });
+        // withCredentials: true permite que axios envíe y reciba cookies
+        const { data } = await axios.post(`${API_URL}/auth/login`,
+            { username, password },
+            { withCredentials: true }
+        );
         return data;
     },
 
     register: async (registerData: RegisterData): Promise<LoginResponse> => {
-        const { data } = await axios.post(`${API_URL}/auth/register`, registerData);
+        const { data } = await axios.post(`${API_URL}/auth/register`,
+            registerData,
+            { withCredentials: true }
+        );
         return data;
     },
 
-    getCurrentUser: async (token: string): Promise<User> => {
+    getCurrentUser: async (): Promise<User> => {
         const { data } = await apiClient.get(`/auth/me`);
         return data;
     },
@@ -48,5 +55,20 @@ export const authService = {
         const { data: response } = await apiClient.put(`/auth/change-password`, data);
         return response;
     },
-};
 
+    refreshToken: async (): Promise<void> => {
+        // El refreshToken está en cookies httpOnly, no necesitamos enviarlo manualmente
+        await axios.post(`${API_URL}/auth/refresh-token`, {}, { withCredentials: true });
+    },
+
+    logout: async (): Promise<void> => {
+        // Llamar al endpoint de logout para limpiar cookies en el servidor
+        try {
+            await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true });
+        } catch (error) {
+            console.error('Error al hacer logout:', error);
+        }
+        // Limpiar datos locales
+        localStorage.removeItem('user');
+    },
+};

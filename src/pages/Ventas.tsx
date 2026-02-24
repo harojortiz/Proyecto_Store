@@ -4,11 +4,15 @@ import { formatCOP, formatDate } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Pencil, Trash2, X, Filter, DollarSign, Loader2 } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, X, Filter, DollarSign, Loader2, FileDown, FileSpreadsheet, FileText, LayoutGrid, ChevronRight, Receipt } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import VentaDialog from "@/components/VentaDialog";
 import PaymentsDialog from "@/components/PaymentsDialog";
+import { SaleFilterBar } from "@/components/SaleFilterBar";
+import { TableSkeleton } from "@/components/skeletons";
 import { useSearchParams } from "react-router-dom";
+import { exportVentasToPDF, exportVentasToExcel } from "@/services/exportService";
+import { downloadInvoice } from "@/services/salesService";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Sale } from "@/types";
+import { cn } from "@/lib/utils";
 
 export default function Ventas() {
   const {
@@ -31,20 +35,19 @@ export default function Ventas() {
     cargarMasVentas,
     hasMore,
     isLoading,
-    categorias
+    categorias,
+    salesFilters,
+    setSalesFilters
   } = useVentasStore();
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filtroDeuda, setFiltroDeuda] = useState(false);
-  const [filtroMes, setFiltroMes] = useState(false);
-  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string | null>(null);
   const [ventaDialogOpen, setVentaDialogOpen] = useState(false);
   const [ventaEditando, setVentaEditando] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [ventaAEliminar, setVentaAEliminar] = useState<string | null>(null);
   const [paymentsDialogOpen, setPaymentsDialogOpen] = useState(false);
   const [selectedSale, setSelectedSale] = useState<any | null>(null);
+  const [downloadingInvoice, setDownloadingInvoice] = useState<string | null>(null);
 
   // Observer for infinite scroll
   const observer = useRef<IntersectionObserver | null>(null);
@@ -61,52 +64,42 @@ export default function Ventas() {
     if (node) observer.current.observe(node);
   }, [isLoading, hasMore, cargarMasVentas]);
 
-  // Cargar ventas iniciales
   useEffect(() => {
-    obtenerVentas(true); // Reset list on mount
+    obtenerVentas(true);
   }, []);
 
-  // Activar filtros al llegar desde Dashboard
   useEffect(() => {
     const filtro = searchParams.get('filtro');
     const categoria = searchParams.get('categoria');
 
     if (filtro === 'deuda') {
-      setFiltroDeuda(true);
+      setSalesFilters({ estado: 'DEUDA' });
     } else if (filtro === 'mes') {
-      setFiltroMes(true);
+      const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+      setSalesFilters({ fechaDesde: firstDay, fechaHasta: lastDay });
     }
 
     if (categoria && categoria !== 'todas') {
-      setCategoriaSeleccionada(categoria);
+      setSalesFilters({ categoriaId: categoria });
     }
 
-    // Limpiar parámetros de la URL
-    setSearchParams({});
+    if (searchParams.get('action') === 'new') {
+      handleNuevaVenta();
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('action');
+      setSearchParams(newParams, { replace: true });
+    }
+
+    if (filtro || categoria) {
+      setSearchParams({});
+    }
   }, [searchParams, setSearchParams]);
 
-  const ventasFiltradas = ventas.filter((v) => {
-    const cliente = obtenerCliente(v.clienteId);
-    const searchLower = searchTerm.toLowerCase();
-
-    const cumpleBusqueda = (
-      (v.ref?.toLowerCase() || '').includes(searchLower) ||
-      (v.modelo?.toLowerCase() || '').includes(searchLower) ||
-      (cliente?.name?.toLowerCase() || '').includes(searchLower)
-    );
-
-    const cumpleDeuda = !filtroDeuda || v.deuda > 0;
-
-    const cumpleMes = !filtroMes || (() => {
-      const fecha = new Date(v.fecha);
-      const now = new Date();
-      return fecha.getMonth() === now.getMonth() && fecha.getFullYear() === now.getFullYear();
-    })();
-
-    const cumpleCategoria = !categoriaSeleccionada || v.categoriaId === categoriaSeleccionada;
-
-    return cumpleBusqueda && cumpleDeuda && cumpleMes && cumpleCategoria;
-  });
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSalesFilters({ search: e.target.value });
+  };
 
   const handleEditarVenta = (id: string) => {
     setVentaEditando(id);
@@ -132,221 +125,251 @@ export default function Ventas() {
     }
   };
 
+  const handleDownloadInvoice = async (ventaId: string) => {
+    setDownloadingInvoice(ventaId);
+    try {
+      await downloadInvoice(ventaId);
+    } catch {
+      toast.error("No se pudo descargar la factura");
+    } finally {
+      setDownloadingInvoice(null);
+    }
+  };
+
   const getEstadoBadge = (estado: string) => {
-    const variants = {
-      PAGADA: 'default',
-      PARCIAL: 'secondary',
-      DEUDA: 'destructive',
-    };
-    return (
-      <Badge variant={variants[estado as keyof typeof variants] as any}>
-        {estado}
-      </Badge>
-    );
+    switch (estado) {
+      case 'PAGADA':
+        return <span className="badge-excellent">Pagada</span>;
+      case 'PARCIAL':
+        return <span className="badge-good">Parcial</span>;
+      case 'DEUDA':
+        return <span className="badge-warning">Deuda</span>;
+      default:
+        return <span className="badge-cancel">Cancelada</span>;
+    }
   };
 
   return (
     <div className="space-y-6 pb-20 md:pb-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Ventas</h1>
-          <p className="text-muted-foreground">
-            Gestión completa de ventas de relojes
-          </p>
-        </div>
-        <Button onClick={handleNuevaVenta} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Nueva Venta
-        </Button>
-      </div>
-
-      <Card className="p-4 space-y-3">
-        <div className="flex flex-col md:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por REF, modelo o cliente..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+      {/* Header Estilo Luxe - Gestión de Ventas */}
+      <div className="luxe-header mb-8">
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-md border border-white/20">
+              <DollarSign className="w-6 h-6 text-accent" />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Gestión de Ventas</h1>
+              <p className="text-white/70 text-sm flex items-center gap-2 font-medium">
+                <LayoutGrid className="w-4 h-4 text-accent" />
+                Control de Ingresos y Seguimiento
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              variant="ghost"
+              onClick={() => exportVentasToPDF(ventas, (id) => obtenerCliente(id)?.name || '-')}
+              className="h-11 px-4 rounded-xl border border-white/20 bg-white/10 text-white hover:bg-white/20 font-bold backdrop-blur-sm"
+            >
+              <FileDown className="w-4 h-4 mr-2" />
+              PDF
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => exportVentasToExcel(ventas, (id) => obtenerCliente(id)?.name || '-')}
+              className="h-11 px-4 rounded-xl border border-white/20 bg-white/10 text-white hover:bg-white/20 font-bold backdrop-blur-sm"
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Excel
+            </Button>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 items-center">
-          <Filter className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Filtros:</span>
+        {/* Decoración Luxe */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-accent/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-1/3 w-32 h-32 bg-white/5 rounded-full blur-2xl" />
+      </div>
 
-          <Button
-            variant={filtroMes ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFiltroMes(!filtroMes)}
-            className="gap-2"
-          >
-            {filtroMes && <X className="w-3 h-3" />}
-            Este mes
-          </Button>
-
-          <Button
-            variant={filtroDeuda ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFiltroDeuda(!filtroDeuda)}
-            className="gap-2"
-          >
-            {filtroDeuda && <X className="w-3 h-3" />}
-            Con deuda ({ventas.filter(v => v.deuda > 0).length})
-          </Button>
-
-          <div className="h-4 w-px bg-border mx-2" />
-
-          <span className="text-sm text-muted-foreground">Categoría:</span>
-          <Button
-            variant={categoriaSeleccionada === null ? "default" : "outline"}
-            size="sm"
-            onClick={() => setCategoriaSeleccionada(null)}
-          >
-            Todas
-          </Button>
-          {categorias.map((cat) => (
-            <Button
-              key={cat.id}
-              variant={categoriaSeleccionada === cat.id ? "default" : "outline"}
-              size="sm"
-              onClick={() => setCategoriaSeleccionada(cat.id)}
-            >
-              {cat.nombre}
-            </Button>
-          ))}
-        </div>
-      </Card>
-
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">#</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">REF</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Modelo</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">NETO</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">IVA 19%</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">Total</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">Cuota 1</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">Cuota 2</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">Deuda</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Cliente</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Fecha</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Estado</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ventasFiltradas.map((venta, index) => {
-                const isLastElement = index === ventasFiltradas.length - 1;
-
-                return (
-                  <tr
-                    key={venta.id}
-                    ref={isLastElement ? lastElementRef : null}
-                    className="border-t border-border hover:bg-muted/30"
-                  >
-                    <td className="px-4 py-3 text-sm text-foreground">{index + 1}</td>
-                    <td className="px-4 py-3 text-sm font-medium text-foreground">{venta.ref || venta.product?.ref}</td>
-                    <td className="px-4 py-3 text-sm text-foreground">{venta.modelo || venta.product?.nombre}</td>
-                    <td className="px-4 py-3 text-sm text-right text-foreground">{formatCOP(venta.neto)}</td>
-                    <td className="px-4 py-3 text-sm text-right text-muted-foreground">{formatCOP(venta.iva19)}</td>
-                    <td className="px-4 py-3 text-sm text-right font-semibold text-foreground">{formatCOP(venta.total)}</td>
-                    <td className="px-4 py-3 text-sm text-right text-foreground">{formatCOP(venta.cuota1)}</td>
-                    <td className="px-4 py-3 text-sm text-right text-foreground">{formatCOP(venta.cuota2)}</td>
-                    <td className="px-4 py-3 text-sm text-right font-semibold text-warning">{formatCOP(venta.deuda)}</td>
-                    <td className="px-4 py-3 text-sm text-foreground">{venta.customer?.name || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(venta.fecha)}</td>
-                    <td className="px-4 py-3">{getEstadoBadge(venta.estado)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setSelectedSale(venta);
-                            setPaymentsDialogOpen(true);
-                          }}
-                          title="Ver Pagos"
-                        >
-                          <DollarSign className="w-4 h-4 text-green-600" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditarVenta(venta.id)}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEliminarClick(venta.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-
-          {isLoading && (
-            <div className="flex justify-center p-4">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Main Sales Table Area */}
+        <div className="lg:col-span-2 space-y-6">
+          <Card className="luxe-card border-none">
+            <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
+              <h3 className="text-lg font-bold">Ventas Recientes</h3>
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="relative flex-1 md:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar ventas..."
+                    value={salesFilters.search || ''}
+                    onChange={handleSearchChange}
+                    className="pl-10 h-10 bg-muted/50 border-none rounded-xl focus-visible:ring-accent/20 font-medium"
+                  />
+                </div>
+              </div>
             </div>
-          )}
 
-          {!hasMore && ventasFiltradas.length > 0 && (
-            <div className="text-center p-4 text-sm text-muted-foreground">
-              No hay más ventas para mostrar
-            </div>
-          )}
+            {isLoading && ventas.length === 0 ? (
+              <TableSkeleton rows={8} />
+            ) : (
+              <div className="overflow-x-auto -mx-6">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border/50 bg-muted/30">
+                      <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">REF</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Modelo / Cliente</th>
+                      <th className="px-6 py-4 text-right text-xs font-bold text-muted-foreground uppercase tracking-wider">Total</th>
+                      <th className="px-6 py-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Estado</th>
+                      <th className="px-6 py-4 text-right text-xs font-bold text-muted-foreground uppercase tracking-wider">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {ventas.map((venta, index) => {
+                      const isLastElement = index === ventas.length - 1;
+                      return (
+                        <tr
+                          key={venta.id}
+                          ref={isLastElement ? lastElementRef : null}
+                          className="hover:bg-secondary/20 transition-colors group"
+                        >
+                          <td className="px-6 py-5">
+                            <span className="text-sm font-bold text-primary dark:text-slate-100">{venta.ref || venta.product?.ref}</span>
+                          </td>
+                          <td className="px-6 py-5">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-bold text-primary/80 dark:text-slate-200">{venta.modelo || venta.product?.nombre}</span>
+                              <span className="text-[10px] text-muted-foreground font-medium uppercase">{venta.customer?.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-5 text-right text-sm font-bold text-primary dark:text-white">
+                            {formatCOP(venta.total)}
+                          </td>
+                          <td className="px-6 py-5 text-center">
+                            {getEstadoBadge(venta.estado)}
+                          </td>
+                          <td className="px-6 py-5">
+                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDownloadInvoice(venta.id)}
+                                className="h-8 w-8 rounded-lg text-muted-foreground hover:text-accent"
+                                title="Descargar Factura PDF"
+                                disabled={downloadingInvoice === venta.id}
+                              >
+                                {downloadingInvoice === venta.id
+                                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                                  : <Receipt className="w-4 h-4" />}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditarVenta(venta.id)}
+                                className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEliminarClick(venta.id)}
+                                className="h-8 w-8 rounded-lg text-muted-foreground hover:text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
         </div>
-      </Card>
 
-      <VentaDialog
-        open={ventaDialogOpen}
-        onOpenChange={setVentaDialogOpen}
-        ventaId={ventaEditando}
-      />
+        {/* Sidebar Summary Area (Similar to Recommended Items / New Order in image) */}
+        <div className="space-y-6">
+          <Card className="luxe-card luxe-gradient text-white overflow-hidden relative border-none">
+            <div className="relative z-10">
+              <h3 className="text-lg font-bold mb-6">Vista Rápida</h3>
+              <div className="space-y-6">
+                <div>
+                  <p className="text-[10px] opacity-60 font-bold uppercase tracking-widest mb-1">Total en Ventas</p>
+                  <p className="text-3xl font-black">{formatCOP(ventas.reduce((acc, v) => acc + v.total, 0))}</p>
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <p className="text-[10px] opacity-60 font-bold uppercase tracking-widest mb-1">Pendiente de Cobro</p>
+                    <p className="text-xl font-bold text-accent">{formatCOP(ventas.reduce((acc, v) => acc + v.deuda, 0))}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Abstract Background Element */}
+            <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-white/5 rounded-full blur-3xl opacity-50" />
+          </Card>
+
+          <Card className="luxe-card border-none">
+            <h3 className="text-lg font-bold mb-6">Categorías</h3>
+            <div className="space-y-2">
+              {categorias.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setSalesFilters({ categoriaId: salesFilters.categoriaId === cat.id ? undefined : cat.id })}
+                  className={cn(
+                    "w-full flex items-center justify-between p-3 rounded-xl transition-all font-bold text-xs uppercase tracking-wider",
+                    salesFilters.categoriaId === cat.id
+                      ? "bg-accent text-white"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  <span>{cat.nombre}</span>
+                  <ChevronRight className={cn("w-4 h-4 opacity-50", salesFilters.categoriaId === cat.id && "opacity-100")} />
+                </button>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {ventaDialogOpen && (
+        <VentaDialog
+          open={ventaDialogOpen}
+          onOpenChange={setVentaDialogOpen}
+          ventaId={ventaEditando}
+        />
+      )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-[2rem] border-none p-8">
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. Se eliminará permanentemente esta venta.
+            <AlertDialogTitle className="text-xl font-bold">¿Confirmar eliminación?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-500 font-medium pt-2">
+              Esta acción no se puede deshacer. La venta será eliminada permanentemente de los registros.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleEliminarConfirm}>
-              Eliminar
+          <AlertDialogFooter className="pt-6">
+            <AlertDialogCancel className="rounded-xl border-border h-11 px-6 font-semibold">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleEliminarConfirm} className="rounded-xl bg-red-600 hover:bg-red-700 h-11 px-6 font-bold shadow-lg shadow-red-100">
+              Eliminar Registro
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Payments Dialog */}
-      {selectedSale && (
-        <PaymentsDialog
-          open={paymentsDialogOpen}
-          onOpenChange={setPaymentsDialogOpen}
-          saleId={selectedSale.id}
-          saleTotal={selectedSale.total}
-          saleDeuda={selectedSale.deuda}
-          onPaymentCreated={() => {
-            obtenerVentas(true); // Recargar ventas para actualizar deuda
-          }}
-        />
-      )}
+      <PaymentsDialog
+        open={paymentsDialogOpen}
+        onOpenChange={setPaymentsDialogOpen}
+        saleId={selectedSale?.id || ''}
+        saleTotal={selectedSale?.total || 0}
+        saleDeuda={selectedSale?.deuda || 0}
+        onPaymentCreated={() => {
+          obtenerVentas(true);
+        }}
+      />
     </div>
   );
 }

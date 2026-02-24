@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Payment } from "@/types";
 import { paymentsService, CreatePaymentData } from "@/services/paymentsService";
@@ -11,6 +10,7 @@ import { formatCOP, formatDate } from "@/lib/formatters";
 import { toast } from "sonner";
 import { Trash2, Plus, DollarSign } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -99,7 +99,13 @@ export default function PaymentsDialog({
             onPaymentCreated?.();
         } catch (error: any) {
             console.error('Error al crear pago:', error);
-            toast.error(error.response?.data?.error || 'Error al registrar el pago');
+            const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Error al registrar el pago';
+            toast.error(errorMessage);
+
+            // Logear detalles adicionales si estan disponibles
+            if (error.response?.data?.details) {
+                console.error("Detalles del error:", error.response.data.details);
+            }
         } finally {
             setLoading(false);
         }
@@ -176,8 +182,11 @@ export default function PaymentsDialog({
                                                     id="monto"
                                                     type="number"
                                                     step="0.01"
-                                                    value={formData.monto || ''}
-                                                    onChange={(e) => setFormData({ ...formData, monto: parseFloat(e.target.value) || 0 })}
+                                                    value={formData.monto === 0 ? '' : formData.monto}
+                                                    onChange={(e) => {
+                                                        const val = parseFloat(e.target.value);
+                                                        setFormData({ ...formData, monto: isNaN(val) ? 0 : val });
+                                                    }}
                                                     className="pl-9"
                                                     placeholder="0.00"
                                                     required
@@ -187,20 +196,24 @@ export default function PaymentsDialog({
 
                                         <div>
                                             <Label htmlFor="metodo">Método de Pago *</Label>
-                                            <Select
-                                                value={formData.metodo}
-                                                onValueChange={(value: any) => setFormData({ ...formData, metodo: value })}
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="Efectivo">Efectivo</SelectItem>
-                                                    <SelectItem value="Transferencia">Transferencia</SelectItem>
-                                                    <SelectItem value="Tarjeta">Tarjeta</SelectItem>
-                                                    <SelectItem value="Otro">Otro</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                            <div className="relative">
+                                                <select
+                                                    className={cn(
+                                                        "flex h-11 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 appearance-none",
+                                                        !formData.metodo && "text-muted-foreground"
+                                                    )}
+                                                    value={formData.metodo}
+                                                    onChange={(e: any) => setFormData({ ...formData, metodo: e.target.value })}
+                                                >
+                                                    <option value="Efectivo">Efectivo</option>
+                                                    <option value="Transferencia">Transferencia</option>
+                                                    <option value="Tarjeta">Tarjeta</option>
+                                                    <option value="Otro">Otro</option>
+                                                </select>
+                                                <div className="absolute right-3 top-3 pointer-events-none opacity-50">
+                                                    <DollarSign className="w-5 h-5" />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 

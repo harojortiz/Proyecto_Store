@@ -15,17 +15,25 @@ export const formatNumber = (amount: number): string => {
 };
 
 export const formatDate = (dateString: string): string => {
-  return new Intl.DateTimeFormat('es-CO', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  }).format(new Date(dateString));
+  try {
+    return new Intl.DateTimeFormat('es-CO', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    }).format(new Date(dateString));
+  } catch (error) {
+    return 'Fecha inválida';
+  }
 };
 
 export const formatDateLong = (dateString: string): string => {
-  return new Intl.DateTimeFormat('es-CO', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }).format(new Date(dateString));
+  try {
+    return new Intl.DateTimeFormat('es-CO', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }).format(new Date(dateString));
+  } catch (error) {
+    return 'Fecha inválida';
+  }
 };

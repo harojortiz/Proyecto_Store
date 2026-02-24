@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 
 interface AuthContextType {
     user: User | null;
-    token: string | null;
     isAuthenticated: boolean;
     isLoading: boolean;
     login: (username: string, password: string) => Promise<void>;
@@ -28,24 +27,20 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
-    const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Auto-login al cargar la app si hay token válido
+    // Auto-login al cargar la app si hay sesión activa (cookies)
     useEffect(() => {
         const initAuth = async () => {
-            const storedToken = localStorage.getItem('token');
             const storedUser = localStorage.getItem('user');
 
-            if (storedToken && storedUser) {
+            if (storedUser) {
                 try {
-                    // Verificar que el token siga siendo válido
-                    const currentUser = await authService.getCurrentUser(storedToken);
+                    // Verificar que la sesión siga siendo válida (el token está en cookies)
+                    const currentUser = await authService.getCurrentUser();
                     setUser(currentUser);
-                    setToken(storedToken);
                 } catch (error) {
-                    // Token inválido, limpiar storage
-                    localStorage.removeItem('token');
+                    // Sesión inválida, limpiar storage
                     localStorage.removeItem('user');
                 }
             }
@@ -59,8 +54,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
             const response = await authService.login(username, password);
             setUser(response.user);
-            setToken(response.token);
-            localStorage.setItem('token', response.token);
+            // Guardar solo el usuario en localStorage (los tokens están en cookies httpOnly)
             localStorage.setItem('user', JSON.stringify(response.user));
             toast.success(`¡Bienvenido, ${response.user.name}!`);
         } catch (error: any) {
@@ -74,8 +68,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
             const response = await authService.register({ email, password, name });
             setUser(response.user);
-            setToken(response.token);
-            localStorage.setItem('token', response.token);
+            // Guardar solo el usuario en localStorage (los tokens están en cookies httpOnly)
             localStorage.setItem('user', JSON.stringify(response.user));
             toast.success(`¡Cuenta creada! Tu usuario es: ${response.user.username}`);
         } catch (error: any) {
@@ -86,16 +79,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     const logout = () => {
+        // Llamar al servicio de logout para limpiar cookies en el servidor
+        authService.logout();
         setUser(null);
-        setToken(null);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
         toast.info('Sesión cerrada');
     };
 
     const value = {
         user,
-        token,
         isAuthenticated: !!user,
         isLoading,
         login,

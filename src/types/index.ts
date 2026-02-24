@@ -11,8 +11,8 @@ export type Categoria = {
 export type Venta = {
   id: string;
   modeloId: string;
-  ref?: string;
-  modelo?: string;
+  ref?: string | null;
+  modelo?: string | null;
   neto: number;
   iva19: number;
   total: number;
@@ -23,11 +23,39 @@ export type Venta = {
   ganancias: number;
   clienteId: string;
   fecha: string;
-  estado: EstadoVenta;
-  notas?: string;
-  costoBase?: number;
+  estado: string; // Changed from EstadoVenta to string for API compatibility
+  notas?: string | null;
+  costoBase?: number | null;
   categoriaId: string;
+  invoiceUrl?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  // Relations from API
+  customer?: {
+    customer_id: string;
+    name: string;
+    phone: string | null;
+    documento: string | null;
+    email: string | null;
+    direccion: string | null;
+  };
+  product?: {
+    id: string;
+    ref: string;
+    nombre: string;
+    costoBase: number;
+    precioSugerido: number;
+  };
+  category?: {
+    id: string;
+    nombre: string;
+    descripcion: string | null;
+    color: string;
+  };
 };
+
+// SaleFromApi is now the same as Venta to avoid type conflicts
+export type SaleFromApi = Venta;
 
 export type Cliente = {
   customer_id?: string;
@@ -46,50 +74,8 @@ export type Modelo = {
   precioSugerido: number;
   categoriaId: string;
   imagen?: string;
-};
-
-export type SaleFromApi = {
-  id: string;
-  modeloId: string;
-  ref: string | null;
-  modelo: string | null;
-  neto: number;
-  iva19: number;
-  total: number;
-  cuota1: number;
-  cuota2: number;
-  deuda: number;
-  venta: number;
-  ganancias: number;
-  clienteId: string;
-  fecha: string;
-  estado: string;
-  notas: string | null;
-  costoBase: number | null;
-  categoriaId: string;
-  createdAt: string;
-  updatedAt: string;
-  customer: {
-    customer_id: string;
-    name: string;
-    phone: string | null;
-    documento: string | null;
-    email: string | null;
-    direccion: string | null;
-  };
-  product: {
-    id: string;
-    ref: string;
-    nombre: string;
-    costoBase: number;
-    precioSugerido: number;
-  };
-  category: {
-    id: string;
-    nombre: string;
-    descripcion: string | null;
-    color: string;
-  };
+  stock: number;
+  stockMinimo: number;
 };
 
 export interface Payment {

@@ -9,6 +9,8 @@ export interface Product {
     precioSugerido: number;
     imagen?: string;
     categoriaId: string;
+    stock: number;
+    stockMinimo: number;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -19,11 +21,24 @@ export interface CreateProductData {
     costoBase: number;
     precioSugerido: number;
     imagen?: string;
+    stock?: number;
+    stockMinimo?: number;
     categoriaId: string;
 }
 
+export interface ProductFilterParams extends PaginationParams {
+    search?: string;
+    categoriaId?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    stockStatus?: 'low' | 'out' | 'available';
+    ordenPrecio?: 'asc' | 'desc';
+    material?: string;
+    stone?: string;
+}
+
 export const productsService = {
-    getAll: async (params?: PaginationParams): Promise<PaginatedResponse<Product> | Product[]> => {
+    getAll: async (params?: ProductFilterParams): Promise<PaginatedResponse<Product> | Product[]> => {
         const { data } = await apiClient.get(`/products`, { params });
         return data;
     },

@@ -94,6 +94,9 @@ export default {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
+      boxShadow: {
+        'recurra': '0 8px 30px rgba(0, 0, 0, 0.04)',
+      },
     },
   },
   plugins: [tailwindcssAnimate],

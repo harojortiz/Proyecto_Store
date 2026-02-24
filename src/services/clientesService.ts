@@ -1,8 +1,14 @@
 import apiClient from "@/lib/api";
 import { Cliente, PaginationParams, PaginatedResponse } from "@/types";
 
+export interface CustomerFilterParams extends PaginationParams {
+  search?: string;
+  fechaDesde?: string;
+  fechaHasta?: string;
+}
+
 export const clientesService = {
-  obtenerClientes: async (params?: PaginationParams): Promise<PaginatedResponse<Cliente> | Cliente[]> => {
+  obtenerClientes: async (params?: CustomerFilterParams): Promise<PaginatedResponse<Cliente> | Cliente[]> => {
     const { data } = await apiClient.get(`/customers/findAll`, { params });
     return data;
   },

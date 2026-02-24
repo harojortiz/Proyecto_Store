@@ -1,4 +1,6 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
+import { Suspense } from "react";
+import LoadingFallback from "./LoadingFallback";
 import {
   Home,
   ShoppingCart,
@@ -6,18 +8,17 @@ import {
   Package,
   Moon,
   Sun,
-  Gem,
-  LogOut,
+  Settings,
   User,
   UserCog,
-  Menu,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Settings
+  LogOut,
+  Bell,
+  Search,
+  Plus
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import {
@@ -28,335 +29,252 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import logo from "@/assets/logo.png";
+import { GlobalSearch } from "./GlobalSearch";
+import { useTheme } from "next-themes";
+import { Input } from "./ui/input";
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isHovering, setIsHovering] = useState(false);
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light');
-    setTheme(initialTheme);
-    document.documentElement.classList.toggle('dark', initialTheme === 'dark');
-  }, []);
-
-  useEffect(() => {
-    const savedSidebarState = localStorage.getItem('sidebarOpen');
-    if (savedSidebarState !== null) {
-      setSidebarOpen(savedSidebarState === 'true');
-    }
-  }, []);
+  const { setTheme, theme } = useTheme();
 
   const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
-  };
-
-  const toggleSidebar = () => {
-    const newState = !sidebarOpen;
-    setSidebarOpen(newState);
-    localStorage.setItem('sidebarOpen', String(newState));
+    setTheme(theme === "light" ? "dark" : "light");
   };
 
   const navItems = [
-    { path: "/", icon: Home, label: "Dashboard" },
-    { path: "/productos", icon: Package, label: "Productos" },
-    { path: "/ventas", icon: ShoppingCart, label: "Ventas" },
+    { path: "/", icon: Home, label: "Inicio" },
     { path: "/clientes", icon: Users, label: "Clientes" },
+    { path: "/productos", icon: Package, label: "Inventario" },
+    { path: "/ventas", icon: ShoppingCart, label: "Ventas" },
   ];
 
-  // Determinar si el sidebar debe mostrarse expandido
-  const shouldShowExpanded = sidebarOpen || isHovering;
-
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Sidebar Desktop */}
-      <aside
-        className={cn(
-          "hidden md:flex flex-col bg-card border-r border-border transition-all duration-500 ease-in-out",
-          shouldShowExpanded ? "w-64" : "w-20"
-        )}
-        onMouseEnter={() => !sidebarOpen && setIsHovering(true)}
-        onMouseLeave={() => setIsHovering(false)}
-      >
-        {/* Logo y Toggle */}
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          <div className={cn("flex items-center gap-3 transition-all duration-500 ease-in-out", !shouldShowExpanded && "opacity-0 w-0 overflow-hidden")}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 
-                flex items-center justify-center shadow-lg ring-1 ring-slate-600/20
-                transition-all duration-500 ease-in-out hover:scale-105 hover:shadow-xl">
-              <svg
-                className="w-6 h-6 text-amber-400"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M12 2L4 7v3.5c0 5.25 3.5 10.15 8 11.5 4.5-1.35 8-6.25 8-11.5V7l-8-5zm0 2.18l6 3.75v2.57c0 4.35-2.8 8.4-6 9.6-3.2-1.2-6-5.25-6-9.6V7.93l6-3.75zM12 7l-3 3 3 3 3-3-3-3z" />
-              </svg>
+    <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors duration-300">
+      {/* Top Header Section */}
+      <header className="h-20 flex items-center justify-between px-6 border-none header-glass sticky top-0 z-50">
+        <div className="flex items-center gap-8">
+          {/* Logo & Brand */}
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center bg-primary shrink-0 transition-transform group-hover:scale-105">
+              <img
+                src={logo}
+                alt="Logo"
+                className="w-full h-full object-contain scale-[1.8]"
+              />
             </div>
-            {shouldShowExpanded && (
-              <div>
-                <h1 className="text-lg font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
-                  V&H Store
-                </h1>
-                <p className="text-[10px] text-muted-foreground font-medium tracking-wide">LUXURY TIMEPIECES</p>
-              </div>
-            )}
-          </div>
-
-          {/* Logo when collapsed */}
-          {!shouldShowExpanded && (
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 
-                flex items-center justify-center shadow-lg ring-1 ring-slate-600/20
-                transition-all duration-500 ease-in-out hover:scale-105 hover:shadow-xl mx-auto">
-              <svg
-                className="w-6 h-6 text-amber-400"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M12 2L4 7v3.5c0 5.25 3.5 10.15 8 11.5 4.5-1.35 8-6.25 8-11.5V7l-8-5zm0 2.18l6 3.75v2.57c0 4.35-2.8 8.4-6 9.6-3.2-1.2-6-5.25-6-9.6V7.93l6-3.75zM12 7l-3 3 3 3 3-3-3-3z" />
-              </svg>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 dark:from-white dark:to-slate-400 bg-clip-text text-transparent uppercase">
+                V&H Luxe
+              </h1>
+              <p className="text-[10px] tracking-[0.2em] text-muted-foreground uppercase font-medium leading-none">Alta Relojería</p>
             </div>
-          )}
+          </Link>
+        </div>
 
+
+
+        {/* Right Actions - Extremely Minimal */}
+        <div className="flex items-center gap-4">
+          <div className="h-4 w-[1px] bg-border opacity-50 mx-1 hidden sm:block" />
+
+          {/* Buscador Minimalista */}
           <Button
             variant="ghost"
             size="icon"
-            onClick={toggleSidebar}
-            className={cn("h-8 w-8 hover:bg-slate-100 dark:hover:bg-slate-800", !shouldShowExpanded && "absolute right-2")}
+            onClick={() => window.dispatchEvent(new CustomEvent('open-global-search'))}
+            className="h-10 w-10 rounded-full hover:bg-secondary group transition-all"
+            title="Buscador Global (⌘K)"
           >
-            {sidebarOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            <Search className="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors" />
           </Button>
-        </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 p-3 space-y-1">
+          <TooltipProvider delayDuration={400}>
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-10 w-10 p-0 rounded-full hover:bg-secondary relative group transition-all">
+                      <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden border border-border group-hover:border-accent/40 transition-colors">
+                        <User className="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors" />
+                      </div>
+                      {/* Indicador sutil de Administrador */}
+                      {user?.role === 'ADMIN' && (
+                        <span className="absolute bottom-1 right-1 w-2 h-2 bg-accent rounded-full border-2 border-white dark:border-slate-900 shadow-sm" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  align="end"
+                  className="p-0 overflow-hidden rounded-xl border-white/10 shadow-xl"
+                >
+                  <div className="px-4 py-3 bg-primary/95 backdrop-blur-md text-primary-foreground min-w-[160px]">
+                    <p className="text-xs font-black tracking-wider uppercase text-accent">
+                      {user?.role === 'ADMIN' ? '★ Administrador' : '● Operador'}
+                    </p>
+                    <p className="text-sm font-bold mt-0.5">{user?.name}</p>
+                    {user?.email && (
+                      <p className="text-[10px] opacity-50 font-medium truncate mt-0.5">{user.email}</p>
+                    )}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end" className="w-64 mt-2 rounded-xl p-2 border-border shadow-xl bg-white/95 backdrop-blur-lg">
+                <DropdownMenuLabel className="px-3 py-3">
+                  <div className="flex flex-col space-y-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-bold text-primary">{user?.name}</p>
+                      {user?.role === 'ADMIN' && (
+                        <span className="text-[10px] bg-accent/10 text-accent px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">Administrador</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground font-medium truncate">{user?.email}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="mx-1 my-2" />
+
+                {/* Controles de Sistema movidos aquí para limpieza */}
+                <div className="px-2 py-2 grid grid-cols-2 gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleTheme}
+                    className="rounded-lg h-9 px-2 gap-2 text-xs font-bold text-muted-foreground hover:bg-secondary justify-start"
+                  >
+                    {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                    {theme === 'light' ? 'Oscuro' : 'Claro'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="rounded-lg h-9 px-2 gap-2 text-xs font-bold text-muted-foreground hover:bg-secondary justify-start"
+                  >
+                    <Bell className="w-4 h-4" />
+                    Avisos
+                  </Button>
+                </div>
+
+                <DropdownMenuSeparator className="mx-1 my-2" />
+
+                <DropdownMenuItem asChild className="rounded-lg cursor-pointer py-2.5 focus:bg-secondary/50">
+                  <Link to="/profile">
+                    <UserCog className="w-4 h-4 mr-3 text-muted-foreground" />
+                    <span className="font-bold text-xs uppercase tracking-widest">Mi Perfil</span>
+                  </Link>
+                </DropdownMenuItem>
+                {user?.role === 'ADMIN' && (
+                  <DropdownMenuItem asChild className="rounded-lg cursor-pointer py-2.5 focus:bg-secondary/50">
+                    <Link to="/usuarios">
+                      <Users className="w-4 h-4 mr-3 text-muted-foreground" />
+                      <span className="font-bold text-xs uppercase tracking-widest">Gestionar Usuarios</span>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator className="mx-1 my-2" />
+                <DropdownMenuItem onClick={logout} className="rounded-lg cursor-pointer py-2.5 text-red-600 focus:text-red-700 focus:bg-red-50">
+                  <LogOut className="w-4 h-4 mr-3" />
+                  <span className="font-bold text-xs uppercase tracking-widest">Cerrar Sesión</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </TooltipProvider>
+        </div>
+      </header>
+
+      {/* Navigation Sub-header (Tabs) - Simplified */}
+      <div className="px-6 py-4 flex items-center justify-between border-b border-border/40">
+        <nav className="flex items-center gap-1 bg-secondary/30 p-1 rounded-full w-fit">
           {navItems.map((item) => {
-            const Icon = item.icon;
             const isActive = location.pathname === item.path;
             return (
               <Link key={item.path} to={item.path}>
                 <Button
-                  variant={isActive ? "secondary" : "ghost"}
+                  variant="ghost"
                   className={cn(
-                    "w-full justify-start gap-3 transition-all",
-                    !shouldShowExpanded && "justify-center px-2"
+                    "h-9 px-6 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-200",
+                    isActive
+                      ? "bg-white dark:bg-slate-700 shadow-sm text-primary"
+                      : "text-muted-foreground hover:text-primary hover:bg-white/50"
                   )}
-                  title={!shouldShowExpanded ? item.label : undefined}
                 >
-                  <Icon className="w-5 h-5 shrink-0" />
-                  {shouldShowExpanded && <span>{item.label}</span>}
+                  {item.label}
                 </Button>
               </Link>
             );
           })}
         </nav>
 
-        {/* User Section - Simplified */}
-        <div className="p-3 border-t border-border">
-          {user && (
-            <>
-              {/* User Info - Solo cuando está expandido */}
-              {shouldShowExpanded && (
-                <div className="px-3 py-2 bg-muted rounded-lg mb-2">
-                  <div className="flex items-center gap-2 mb-1">
-                    <User className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm font-medium truncate">{user.name}</span>
-                  </div>
-                  {user.role === 'ADMIN' && (
-                    <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded inline-block">
-                      Admin
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Settings Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      "w-full gap-3",
-                      !shouldShowExpanded && "justify-center px-2"
-                    )}
-                  >
-                    <Settings className="w-5 h-5 shrink-0" />
-                    {shouldShowExpanded && <span>Configuración</span>}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium">{user.name}</p>
-                      <p className="text-xs text-muted-foreground">{user.email || 'Sin email'}</p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-
-                  <DropdownMenuItem asChild>
-                    <Link to="/profile" className="cursor-pointer">
-                      <UserCog className="w-4 h-4 mr-2" />
-                      Mi Perfil
-                    </Link>
-                  </DropdownMenuItem>
-
-                  {user.role === 'ADMIN' && (
-                    <DropdownMenuItem asChild>
-                      <Link to="/usuarios" className="cursor-pointer">
-                        <Users className="w-4 h-4 mr-2" />
-                        Gestión de Usuarios
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-
-                  <DropdownMenuSeparator />
-
-                  <DropdownMenuItem onClick={toggleTheme} className="cursor-pointer">
-                    {theme === 'light' ? (
-                      <>
-                        <Moon className="w-4 h-4 mr-2" />
-                        Modo Oscuro
-                      </>
-                    ) : (
-                      <>
-                        <Sun className="w-4 h-4 mr-2" />
-                        Modo Claro
-                      </>
-                    )}
-                  </DropdownMenuItem>
-
-                  <DropdownMenuSeparator />
-
-                  <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Cerrar Sesión
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          )}
-        </div>
-      </aside>
-
-      {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border backdrop-blur-sm bg-card/95">
-        <div className="flex items-center justify-between p-4">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 
-                flex items-center justify-center shadow-lg ring-1 ring-slate-600/20">
-              <svg
-                className="w-5 h-5 text-amber-400"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M12 2L4 7v3.5c0 5.25 3.5 10.15 8 11.5 4.5-1.35 8-6.25 8-11.5V7l-8-5zm0 2.18l6 3.75v2.57c0 4.35-2.8 8.4-6 9.6-3.2-1.2-6-5.25-6-9.6V7.93l6-3.75zM12 7l-3 3 3 3 3-3-3-3z" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-base font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">V&H Store</h1>
-              <p className="text-[9px] text-muted-foreground font-medium tracking-wide">LUXURY TIMEPIECES</p>
-            </div>
-          </div>
-
+        {location.pathname === '/' ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="luxe-button-gold rounded-full h-10 px-6 gap-2 text-xs">
+                <Plus className="w-4 h-4" />
+                Nuevo Registro
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 mt-2 rounded-xl p-2 bg-white/95 backdrop-blur-lg border-border shadow-xl">
+              <DropdownMenuLabel className="px-3 py-2 text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Acciones Rápidas</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate('/ventas?action=new')} className="rounded-lg cursor-pointer py-2.5">
+                <ShoppingCart className="w-4 h-4 mr-3 text-accent" />
+                <span className="font-bold text-xs uppercase tracking-widest">Nueva Venta</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/productos?action=new')} className="rounded-lg cursor-pointer py-2.5">
+                <Package className="w-4 h-4 mr-3 text-accent" />
+                <span className="font-bold text-xs uppercase tracking-widest">Nuevo Producto</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/clientes?action=new')} className="rounded-lg cursor-pointer py-2.5">
+                <Users className="w-4 h-4 mr-3 text-accent" />
+                <span className="font-bold text-xs uppercase tracking-widest">Nuevo Cliente</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
           <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            onClick={() => {
+              const action = location.pathname === '/ventas' ? 'Venta' :
+                location.pathname === '/productos' ? 'Producto' : 'Cliente';
+              navigate(`${location.pathname}?action=new`);
+            }}
+            className="luxe-button-gold rounded-full h-10 px-6 gap-2 text-xs"
           >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            <Plus className="w-4 h-4" />
+            {location.pathname === '/ventas' ? 'Nueva Venta' :
+              location.pathname === '/productos' ? 'Nuevo Producto' : 'Nuevo Cliente'}
           </Button>
-        </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="border-t border-border bg-card p-4 space-y-2">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
-              return (
-                <Link key={item.path} to={item.path} onClick={() => setMobileMenuOpen(false)}>
-                  <Button
-                    variant={isActive ? "secondary" : "ghost"}
-                    className="w-full justify-start gap-3"
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span>{item.label}</span>
-                  </Button>
-                </Link>
-              );
-            })}
-
-            <div className="pt-2 border-t border-border space-y-2">
-              {user && (
-                <>
-                  <div className="px-3 py-2 bg-muted rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">{user.name}</span>
-                      {user.role === 'ADMIN' && (
-                        <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded ml-auto">
-                          Admin
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <Link to="/profile" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="ghost" className="w-full justify-start gap-3">
-                      <UserCog className="w-5 h-5" />
-                      <span>Mi Perfil</span>
-                    </Button>
-                  </Link>
-
-                  {user.role === 'ADMIN' && (
-                    <Link to="/usuarios" onClick={() => setMobileMenuOpen(false)}>
-                      <Button variant="ghost" className="w-full justify-start gap-3">
-                        <Users className="w-5 h-5" />
-                        <span>Gestión de Usuarios</span>
-                      </Button>
-                    </Link>
-                  )}
-
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start gap-3"
-                    onClick={toggleTheme}
-                  >
-                    {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-                    <span>Cambiar Tema</span>
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start gap-3"
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      logout();
-                    }}
-                  >
-                    <LogOut className="w-5 h-5" />
-                    <span>Cerrar Sesión</span>
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
         )}
       </div>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="container mx-auto px-4 py-8 md:py-8 mt-16 md:mt-0">
-          {children}
+      {/* Main Content Area */}
+      <main className="flex-1 px-6 pb-12 overflow-y-auto custom-scrollbar bg-slate-50/30">
+        <div className="max-w-[1600px] mx-auto py-8">
+          <Suspense fallback={<LoadingFallback />}>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
+          </Suspense>
         </div>
       </main>
+
+      <GlobalSearch />
     </div>
   );
 }
